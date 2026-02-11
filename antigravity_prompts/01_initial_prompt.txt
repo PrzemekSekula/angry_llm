@@ -1,0 +1,37 @@
+Would you be so kind to prototype an experiment with LLMs for me? The goal is to implement a negotiation pipeline between two LLMs (LLM_A and LLM_B) with two middle-men. Below are the technical requirements and pipeline.
+
+<technical_requirements>
+
+1. Use Python and LangGraph for implementation.
+
+2. Store all system prompts in .txt files in the prompts/ folder (one prompt per model). I will deliver the prompts myself; for now, use placeholders.
+
+3. Use GPT-5.2. Read the API key from configs/gpt-5_2_key.txt.
+
+4. Log all model outputs to the log/ folder (one file per experiment). For each logged entry: first write the LLM name and the iteration number on separate line(s), and only then write the message. The log must be easy to parse automatically later.
+
+5. Modify ./requirements.txt so it can later be used with pip install.
+
+6. Limit tests to checking that scripts can be run with --help options and do not return errors. We will add tests later.
+
+7. Make sure the code is run using the selected conda environment (AngryLLM).
+
+8. Add a docstring at the beginning of every .py file, and for every function/class you create.
+</technical_requirements>
+
+<pipeline> 
+1. We have 5 LLMs: `LLM_A`, `LLM_B`, `twist_LLM_A`, `twist_LLM_B`, and `emo_LLM`. We also have two conversation histories: `ConversationHistoryA` and `ConversationHistoryB`.
+
+2. LLM_A receives context (ConversationHistoryA) and sends a message to twist_LLM_A. This message is added to ConversationHistoryA.
+
+3. twist_LLM_A receives context: (a) the previous numerical conversation evaluation from emo_LLM (a real number from 0 to 1, initially 0), and (b) the last message from LLM_A. It modifies the message from LLM_A and outputs the modified message. This modified message is logged to ConversationHistoryB.
+
+4. LLM_B receives context (ConversationHistoryB) and produces the response. This response is added to ConversationHistoryB.
+
+5. emo_LLM looks at ConversationHistoryB and produces an assessment of this conversation: a number between 0 and 1. This number is used by twist_LLM_B and also in the next round by twist_LLM_A.
+
+6. twist_LLM_B receives (a) the last message produced by LLM_B and (b) the last conversation evaluation from emo_LLM. It produces a modified version of the message from LLM_B. This modified message is added to ConversationHistoryA.
+
+The loop is closed, and we move back to step 1.
+
+</pipeline>
