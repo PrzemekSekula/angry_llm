@@ -6,7 +6,7 @@ Would you be so kind to prototype an experiment with LLMs for me? The goal is to
 
 2. Store all system prompts in .txt files in the prompts/ folder (one prompt per model). I will deliver the prompts myself; for now, use placeholders.
 
-3. Use GPT-5.2. Read the API key from configs/gpt-5_2_key.txt.
+3. Use GPT-5.2. Read the API key from configs/openai_key.txt.
 
 4. Log all model outputs to the log/ folder (one file per experiment). For each logged entry: first write the LLM name and the iteration number on separate line(s), and only then write the message. The log must be easy to parse automatically later.
 
