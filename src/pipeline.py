@@ -8,14 +8,14 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
-from .utils import load_api_key, load_prompt, setup_logging, log_message
+from .utils import load_api_key, load_prompt, setup_logging, log_message, append_ab_row
 
 # Load API Key
-try:
-    api_key = load_api_key()
-    os.environ["OPENAI_API_KEY"] = api_key
-except Exception as e:
-    print(f"Warning: {e}")
+# try:
+#     api_key = load_api_key()
+#     os.environ["OPENAI_API_KEY"] = api_key
+# except Exception as e:
+#     print(f"Warning: {e}")
 
 # Define State
 class GraphState(TypedDict):
@@ -32,7 +32,20 @@ logger = setup_logging()
 # Initialize Models
 # Using gpt-4o as a fallback if gpt-5.2 is not available/valid, but setting model name as requested.
 # Note: The user requested gpt-5.2. If this model name is invalid for the API, it will fail.
-model = ChatOpenAI(model="gpt-5.2", temperature=0.7) 
+
+#### zmieniam na lokalny
+#model = ChatOpenAI(model="gpt-5.2", temperature=0.7) 
+model = ChatOpenAI(
+    # model="gpt-oss-20b",
+    # base_url="http://192.168.100.119:13001/v1",   #oss
+    
+    model= "llama4-scout",
+    base_url="http://192.168.100.119:13000/v1",     #llama4
+    
+    api_key="local",
+    temperature=0.7,
+)
+
 
 def run_pipeline(max_iterations: int = 5):
     """
@@ -60,6 +73,14 @@ def run_pipeline(max_iterations: int = 5):
 
         # Log
         log_message(logger, "LLM_A", iteration, content)
+        
+        # save to CSV
+        append_ab_row(
+            iteration=iteration,
+            speaker="A",
+            prompt_messages=messages,
+            response_text=content,
+        )
 
         # Update state
         return {
@@ -72,7 +93,7 @@ def run_pipeline(max_iterations: int = 5):
         twist_LLM_A modifies the message from LLM_A.
         """
         iteration = state['iteration']
-        prompt = load_prompt("twist _llm_a")
+        prompt = load_prompt("twist_llm_a")
         original_msg = state['last_message']
         emo_score = state['emo_score']
         
@@ -105,33 +126,104 @@ def run_pipeline(max_iterations: int = 5):
         
         log_message(logger, "LLM_B", iteration, content)
         
+        append_ab_row(
+            iteration=iteration,
+            speaker="B",
+            prompt_messages=messages,
+            response_text=content,
+        )
+
         return {
             "history_b": state['history_b'] + [response],
             "last_message": content
         }
+    
 
+    # def node_emo(state: GraphState):
+    #     """
+    #     emo_LLM evaluates the conversation history B.
+    #     """
+    #     iteration = state['iteration']
+    #     prompt = load_prompt("emo_llm")
+        
+    #     # Convert history to string for evaluation
+    #     history_str = "\n".join([m.content for m in state['history_b']])
+    #     messages = [SystemMessage(content=prompt), HumanMessage(content=f"Conversation History:\n{history_str}")]
+        
+    #     response = model.invoke(messages)
+    #     content = response.content.strip()
+        
+    #     log_message(logger, "emo_LLM", iteration, content)
+    #     append_ab_row(
+    #         iteration=iteration,
+    #         speaker="EMO",
+    #         prompt_messages=messages,
+    #         response_text=content,
+    #         anger_intensity=anger_intensity,
+    #         anger_state=anger_state,
+    #     )
+    #     try:
+    #         score = float(content)
+    #     except ValueError:
+    #         score = 0.5 # fallback
+            
+    #     return {"emo_score": score}
     def node_emo(state: GraphState):
         """
         emo_LLM evaluates the conversation history B.
+        Saves anger_intensity + anger_state to CSV.
         """
-        iteration = state['iteration']
+        iteration = state["iteration"]
         prompt = load_prompt("emo_llm")
-        
+
         # Convert history to string for evaluation
-        history_str = "\n".join([m.content for m in state['history_b']])
-        messages = [SystemMessage(content=prompt), HumanMessage(content=f"Conversation History:\n{history_str}")]
-        
+        history_str = "\n".join([m.content for m in state["history_b"]])
+        messages = [
+            SystemMessage(content=prompt),
+            HumanMessage(content=f"Conversation History:\n{history_str}")
+        ]
+
         response = model.invoke(messages)
-        content = response.content.strip()
-        
+        content = (response.content or "").strip()
+
         log_message(logger, "emo_LLM", iteration, content)
-        
-        try:
-            score = float(content)
-        except ValueError:
-            score = 0.5 # fallback
-            
+
+        # --- init defaults (ważne!)
+        anger_intensity = None
+        anger_state = None
+
+        # --- parse from text (supports formats:
+        # "ANGER_INTENSITY: 0.78" and "ANGER_STATE: something..."
+        for line in content.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            if line.upper().startswith("ANGER_INTENSITY"):
+                # może być "ANGER_INTENSITY: 0.78" albo "ANGER_INTENSITY: 0.78  "
+                try:
+                    anger_intensity = float(line.split(":", 1)[1].strip())
+                except Exception:
+                    anger_intensity = None
+
+            elif line.upper().startswith("ANGER_STATE"):
+                anger_state = line.split(":", 1)[1].strip()
+
+        # fallback jeśli model nie zwrócił liczby
+        score = anger_intensity if anger_intensity is not None else 0.5
+
+        # --- save emo row to CSV
+        append_ab_row(
+            iteration=iteration,
+            speaker="EMO",
+            prompt_messages=messages,
+            response_text=content,
+            anger_intensity=anger_intensity,
+            anger_state=anger_state,
+        )
+
         return {"emo_score": score}
+
 
     def node_twist_b(state: GraphState):
         """
