@@ -149,15 +149,15 @@ c1, c2 = st.columns(2)
 
 with c1:
     st.markdown("### A input (clean)")
-    st.code(row.get("A_in", "") or "")
+    st.code(row.get("A_in", "") or "", wrap_lines=True, language=None)
     st.markdown("### A output")
-    st.code(row.get("A_out", "") or "")
+    st.code(row.get("A_out", "") or "", wrap_lines=True, language=None)
 
 with c2:
     st.markdown("### B input (clean)")
-    st.code(row.get("B_in", "") or "")
+    st.code(row.get("B_in", "") or "", wrap_lines=True, language=None)
     st.markdown("### B output")
-    st.code(row.get("B_out", "") or "")
+    st.code(row.get("B_out", "") or "", wrap_lines=True, language=None)
 
 
 
@@ -199,8 +199,8 @@ c3, c4 = st.columns(2)
 
 with c3:
     st.markdown("### history_a (full prompt_in)")
-    st.code(row_full.get("history_a_full", "") or "")
+    st.code(row_full.get("history_a_full", "") or "", wrap_lines=True, language=None)
 
 with c4:
     st.markdown("### history_b (full prompt_in)")
-    st.code(row_full.get("history_b_full", "") or "")
+    st.code(row_full.get("history_b_full", "") or "", wrap_lines=True, language=None)

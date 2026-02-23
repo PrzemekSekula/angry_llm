@@ -4,6 +4,7 @@ Main entry point for the LLM negotiation experiment.
 import argparse
 from src.pipeline import run_pipeline
 
+
 def main():
     """
     Parses arguments and runs the negotiation pipeline.
