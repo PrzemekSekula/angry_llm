@@ -12,7 +12,7 @@ def main():
     parser.add_argument(
         "--iterations", 
         type=int, 
-        default=5, 
+        default=6, 
         help="Number of negotiation iterations to run (default: 5)"
     )
     

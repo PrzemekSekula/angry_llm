@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 
 from .utils import load_api_key, load_prompt, setup_logging, log_message, append_ab_row
+from .util_debug import log_debug_csv
 
 # Load API Key
 # try:
@@ -34,8 +35,12 @@ logger = setup_logging()
 # Note: The user requested gpt-5.2. If this model name is invalid for the API, it will fail.
 
 #### zmieniam na lokalny
-#model = ChatOpenAI(model="gpt-5.2", temperature=0.7) 
-model = ChatOpenAI(
+
+LOCAL=False
+if LOCAL:
+    model = ChatOpenAI(model="gpt-5-mini") 
+else:
+    model = ChatOpenAI(
     # model="gpt-oss-20b",
     # base_url="http://192.168.100.119:13001/v1",   #oss
     
@@ -43,8 +48,7 @@ model = ChatOpenAI(
     base_url="http://192.168.100.119:13000/v1",     #llama4
     
     api_key="local",
-    temperature=0.7,
-)
+    )
 
 
 def run_pipeline(max_iterations: int = 5, verbose: bool = False):
@@ -77,10 +81,6 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         
         # Construct messages
         messages = [SystemMessage(content=prompt)] + state['history_a']
-        
-        # If it's the very first message and history is empty, add an initial trigger
-        if not state['history_a']:
-             messages.append(HumanMessage(content="Start the negotiation."))
 
         response = model.invoke(messages)
         content = response.content
@@ -88,6 +88,7 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         # Log
         log_message(logger, "LLM_A", iteration, content)
         _print_state("LLM_A", iteration, content)
+        log_debug_csv(iteration, "llm_a", messages, content)
         
         # save to CSV
         append_ab_row(
@@ -120,12 +121,13 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         
         log_message(logger, "twist_LLM_A", iteration, content)
         _print_state("Twist_A", iteration, content)
+        log_debug_csv(iteration, "twist_a", messages, content)
         
         # The modified message serves as input for LLM_B (HumanMessage from B's perspective)
-        # We append this to history_b
+        # We append this to history_b and increment iteration here since A is now the second speaker
         return {
             "history_b": state['history_b'] + [HumanMessage(content=content)],
-            "last_message": content
+            "iteration": iteration + 1
         }
 
     def node_llm_b(state: GraphState):
@@ -137,11 +139,16 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         
         messages = [SystemMessage(content=prompt)] + state['history_b']
         
+        # If it's the very first message and history is empty, add an initial trigger
+        if not state['history_b']:
+             messages.append(HumanMessage(content="Start the negotiation."))
+        
         response = model.invoke(messages)
         content = response.content
         
         log_message(logger, "LLM_B", iteration, content)
         _print_state("LLM_B", iteration, content)
+        log_debug_csv(iteration, "llm_b", messages, content)
         
         append_ab_row(
             iteration=iteration,
@@ -175,6 +182,7 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         content = (response.content or "").strip()
 
         log_message(logger, "emo_LLM", iteration, content)
+        log_debug_csv(iteration, "emo", messages, content)
 
         # --- init defaults (ważne!)
         anger_intensity = None
@@ -233,11 +241,12 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
         
         log_message(logger, "twist_LLM_B", iteration, content)
         _print_state("Twist_B", iteration, content)
+        log_debug_csv(iteration, "twist_b", messages, content)
         
         # Modified message from B is input for A (HumanMessage from A's perspective)
         return {
             "history_a": state['history_a'] + [HumanMessage(content=content)],
-            "iteration": iteration + 1
+            "last_message": content
         }
 
     # --- Graph Construction ---
@@ -250,19 +259,31 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
     workflow.add_node("emo", node_emo)
     workflow.add_node("twist_b", node_twist_b)
     
-    workflow.set_entry_point("llm_a")
+    workflow.set_entry_point("llm_b")
     
-    workflow.add_edge("llm_a", "twist_a")
-    workflow.add_edge("twist_a", "llm_b")
-    workflow.add_edge("llm_b", "emo")
+    def check_b_done(state: GraphState):
+        text = state['last_message'].upper()
+        if "END" in text or "ACCEPT" in text:
+            return END
+        return "emo"
+
+    def check_a_done(state: GraphState):
+        text = state['last_message'].upper()
+        if "END" in text or "ACCEPT" in text:
+            return END
+        return "twist_a"
+        
+    workflow.add_conditional_edges("llm_b", check_b_done)
     workflow.add_edge("emo", "twist_b")
+    workflow.add_edge("twist_b", "llm_a")
+    workflow.add_conditional_edges("llm_a", check_a_done)
     
     def check_loop(state: GraphState):
         if state['iteration'] > state['max_iterations']:
             return END
-        return "llm_a"
+        return "llm_b"
         
-    workflow.add_conditional_edges("twist_b", check_loop)
+    workflow.add_conditional_edges("twist_a", check_loop)
     
     app = workflow.compile()
     
