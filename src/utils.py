@@ -21,7 +21,9 @@ class CustomFormatter(logging.Formatter):
             return f"{header}\n{message}\n"
         return super().format(record)
 
-def setup_logging(log_dir: str = "../log"):
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+def setup_logging(log_dir: str = str(BASE_DIR / "log")):
     """
     Sets up logging to a file in the specified directory.
     Creates a new log file for each experiment run.
@@ -80,7 +82,7 @@ def load_prompt(prompt_name: str, prompts_dir: str = "prompts") -> str:
 
 
 
-log_dir: str = "../log"
+log_dir: str = str(BASE_DIR / "log")
 os.makedirs(log_dir, exist_ok=True)
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 AB_LOG_PATH = Path(f"{log_dir}/ab_prompts_{timestamp}.csv")
