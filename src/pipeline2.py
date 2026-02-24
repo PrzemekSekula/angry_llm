@@ -2,6 +2,7 @@
 Core LangGraph pipeline implementation.
 """
 import os
+import re
 from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
@@ -263,13 +264,13 @@ def run_pipeline(max_iterations: int = 5, verbose: bool = False):
     
     def check_b_done(state: GraphState):
         text = state['last_message'].upper()
-        if "END" in text or "ACCEPT" in text:
+        if re.search(r'\b(END|ACCEPT)\b', text):
             return END
         return "emo"
 
     def check_a_done(state: GraphState):
         text = state['last_message'].upper()
-        if "END" in text or "ACCEPT" in text:
+        if re.search(r'\b(END|ACCEPT)\b', text):
             return END
         return "twist_a"
         
