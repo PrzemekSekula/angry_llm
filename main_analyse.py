@@ -10,6 +10,7 @@ import seaborn as sns
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
+
 def parse_offer(text):
     """Extracts A and B values from an OFFER string."""
     match = re.search(r'OFFER:\s*A=(\d+),\s*B=(\d+)', text, re.IGNORECASE)
