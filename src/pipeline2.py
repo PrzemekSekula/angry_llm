@@ -37,8 +37,8 @@ logger = setup_logging()
 
 #### zmieniam na lokalny
 
-LOCAL=False
-if LOCAL:
+LOCAL=True
+if not LOCAL:
     model = ChatOpenAI(model="gpt-5-mini") 
 else:
     model = ChatOpenAI(
