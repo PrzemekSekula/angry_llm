@@ -1,0 +1,23 @@
+Your goal is to create a script verify_results that will analyze the results of the conversation and put results in the 'analysis' directory
+- The script should use regular expression parsing to extracts OFFERS and local or chatGPT mini (see src/pipeline2.py) for sentiment analysis. Use local llm by default
+- The script targets parameterized directory (results)
+- In the directory there are experiment files, in particular ab_prompts eg. 1_gpt_mini_ab_prompts_20260224_101015.csv - from the file name you can take experiment (1) and model (gpt_mini)
+- in the file you have csv with model conversation (see pipeline2) with iteration, agent,input,output fields. Notice that input (for agents A,B) contains the whole negotiation up to this point below system prompt i.e. after first [HUMAN] and output adds the response in the current iteration
+- use ai_sprt environment
+
+
+The script should analyze each file, extract relevant data and create results. Results will be put in new CSV file with columns experiment (e.g. 1), iteration (e.g. 1) and results associated with this iteration. Iteration will create one row. From this file we will later generate final results: plots etc. 
+
+Extraction and analysis:
+1. analysis of the game progress - the negotiation progress without comments: two columns for agent A and agent B with offers. If exchange ends, one of them can be empty
+2. Results - anger graph - numerical anger state in each iteration
+3. Results - sentiment analysis of the negotiation progress: apply LLM, to generate numerical estimates from 1 (low) to 10 (high) of negotiation up to this point: score for toxicity, anger, rudeness, calmness, rationality
+4. Results, numerical offers for A,B
+
+finally create images (png/pdf):
+- all anger states in iterations (one line per agent)
+- all negotiations in iterations (b split in iterations, put X at the end if failes, or green dot if succeded)
+- errorbars for above graphs
+- file with numerical statistics: mean, std, anger state, mean offer (B share), Mean offer (B share) taking into account failed negotiations (if agreement was not reached its 0).
+
+

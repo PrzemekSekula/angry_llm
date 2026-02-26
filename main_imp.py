@@ -2,8 +2,7 @@
 Main entry point for the LLM negotiation experiment.
 """
 import argparse
-from src.pipeline import run_pipeline
-
+from src.pipeline2 import run_pipeline
 
 def main():
     """
@@ -13,14 +12,14 @@ def main():
     parser.add_argument(
         "--iterations", 
         type=int, 
-        default=5, 
+        default=6, 
         help="Number of negotiation iterations to run (default: 5)"
     )
     
     args = parser.parse_args()
     
     try:
-        run_pipeline(max_iterations=args.iterations)
+        run_pipeline(max_iterations=args.iterations, verbose=True)
     except Exception as e:
         print(f"An error occurred during execution: {e}")
 
